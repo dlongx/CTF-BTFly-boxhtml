@@ -1,0 +1,1377 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#090d11" />
+  <meta name="description" content="CTF-BTFly 工具包使用说明：.ctfpack 的两种导入方式、按题型的调用套路、全部工具清单、适用范围与故障排查速查表。" />
+  <title>工具包使用说明｜CTF-BTFly 2.9.5</title>
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="工具包使用说明｜CTF-BTFly 2.9.5" />
+  <meta property="og:description" content="导入一次，建题不用选包；按题型调用 packs__ 工具，附完整清单与排障表。" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="icon" href="assets/cpi-icon.png" />
+  <link rel="stylesheet" href="styles.css" />
+<style>
+  /* 文档页专用，与 styles.css 共用同一套深色变量 */
+  :root {
+    --bg: #090d11;
+    --bg-soft: #0a0f13;
+    --bg-code: #0e1419;
+    --ink: #eef5f6;
+    --ink-soft: #9aabb2;
+    --ink-faint: #6f8189;
+    --line: #1d2931;
+    --line-strong: #263540;
+    --accent: #50ccd9;
+    --accent-soft: rgba(80, 204, 217, 0.12);
+    --tip-bg: rgba(112, 211, 154, 0.08);
+    --tip-line: rgba(112, 211, 154, 0.3);
+    --tip-ink: #a6e2be;
+    --warn-bg: rgba(228, 172, 97, 0.09);
+    --warn-line: rgba(228, 172, 97, 0.3);
+    --warn-ink: #ecc48e;
+    --danger-bg: rgba(233, 119, 126, 0.09);
+    --danger-line: rgba(233, 119, 126, 0.3);
+    --danger-ink: #f0a5aa;
+    --info-bg: rgba(80, 204, 217, 0.07);
+    --info-line: rgba(80, 204, 217, 0.26);
+    --info-ink: #bde8ee;
+    --radius: 8px;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    --sidebar-w: 268px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; scroll-padding-top: calc(var(--header) + 20px); }
+
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", sans-serif;
+    font-size: 15px;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- 布局：站点固定头部 + 文档侧栏 ---------- */
+  .layout { display: flex; min-height: 100vh; padding-top: var(--header); }
+
+  .sidebar {
+    position: fixed;
+    top: var(--header); left: 0;
+    width: var(--sidebar-w);
+    height: calc(100vh - var(--header));
+    padding: 24px 18px 40px 24px;
+    background: var(--bg-soft);
+    border-right: 1px solid var(--line);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .sidebar-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .sidebar-logo {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, #50ccd9, #2b8d99);
+    color: #071012; font-size: 13px; font-weight: 700;
+    display: grid; place-items: center; letter-spacing: -0.5px;
+    box-shadow: var(--shadow);
+  }
+  .sidebar-title { font-size: 14px; font-weight: 650; letter-spacing: 0.2px; }
+  .sidebar-sub { margin: 2px 0 20px; font-size: 12px; color: var(--ink-faint); }
+
+  .toc-label {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--ink-faint);
+    margin: 18px 0 8px;
+  }
+  .toc { list-style: none; margin: 0; padding: 0; }
+  .toc li { margin: 1px 0; }
+  .toc a {
+    display: block;
+    padding: 6px 10px;
+    border-radius: 6px;
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: 13.5px;
+    line-height: 1.5;
+    border-left: 2px solid transparent;
+    transition: background 120ms ease, color 120ms ease;
+  }
+  .toc a:hover { background: rgba(255, 255, 255, 0.05); color: var(--ink); }
+  .toc a.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    border-left-color: var(--accent);
+    font-weight: 600;
+  }
+  .toc .sub a { padding-left: 22px; font-size: 13px; color: var(--ink-faint); }
+  .toc .sub a.active { color: var(--accent); }
+
+  .sidebar-foot {
+    margin-top: 26px; padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 12px; color: var(--ink-faint); line-height: 1.6;
+  }
+  .sidebar-foot a { color: var(--accent); }
+  .sidebar-foot a:hover { text-decoration: underline; }
+  .toc-wrap summary { display: none; }
+
+  .main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    min-width: 0;
+    padding: 40px clamp(24px, 4vw, 56px) 96px;
+  }
+  .page { max-width: 880px; margin: 0 auto; }
+
+  /* ---------- 排版 ---------- */
+  h1 {
+    font-size: 34px; line-height: 1.25; font-weight: 700;
+    margin: 0 0 10px; letter-spacing: -0.4px;
+  }
+  .lede { font-size: 16px; color: var(--ink-soft); margin: 0 0 22px; }
+
+  h2 {
+    font-size: 23px; font-weight: 650; letter-spacing: -0.2px;
+    margin: 56px 0 14px; padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  h3 {
+    font-size: 17px; font-weight: 650;
+    margin: 30px 0 8px;
+  }
+  h4 { font-size: 15px; font-weight: 650; margin: 20px 0 6px; }
+  p { margin: 10px 0; }
+  ul, ol { margin: 10px 0 10px; padding-left: 24px; }
+  li { margin: 5px 0; }
+  strong { font-weight: 650; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--line); margin: 34px 0; }
+
+  code {
+    font-family: "SFMono-Regular", ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+    font-size: 0.88em;
+    background: var(--bg-code);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: #b7edf1;
+  }
+  pre {
+    background: var(--bg-code);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.65;
+    margin: 12px 0;
+  }
+  pre code { background: none; border: none; padding: 0; font-size: inherit; }
+
+  /* ---------- 组件 ---------- */
+  .pill {
+    display: inline-block;
+    font-size: 12px; font-weight: 600;
+    padding: 2px 9px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid var(--info-line);
+    vertical-align: middle;
+  }
+  .pill.gray { background: rgba(255, 255, 255, 0.05); color: var(--ink-soft); border-color: var(--line-strong); }
+  .pill.green { background: var(--tip-bg); color: var(--tip-ink); border-color: var(--tip-line); }
+  .pill.amber { background: var(--warn-bg); color: var(--warn-ink); border-color: var(--warn-line); }
+  .pill.blue { background: var(--info-bg); color: var(--info-ink); border-color: var(--info-line); }
+
+  .card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: #0e1419;
+    box-shadow: var(--shadow);
+    padding: 18px 20px;
+    margin: 16px 0;
+  }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 16px 0; }
+  .grid .card { margin: 0; }
+
+  .callout {
+    display: flex; gap: 12px;
+    border: 1px solid var(--info-line);
+    background: var(--info-bg);
+    color: var(--info-ink);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .callout .ico {
+    flex: 0 0 20px; height: 20px; margin-top: 2px;
+    display: grid; place-items: center;
+    font-size: 13px; font-weight: 700;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid currentColor;
+  }
+  .callout .body { min-width: 0; }
+  .callout .body strong { display: block; margin-bottom: 2px; }
+  .callout.tip { background: var(--tip-bg); border-color: var(--tip-line); color: var(--tip-ink); }
+  .callout.warn { background: var(--warn-bg); border-color: var(--warn-line); color: var(--warn-ink); }
+  .callout.danger { background: var(--danger-bg); border-color: var(--danger-line); color: var(--danger-ink); }
+
+  .steps { counter-reset: step; list-style: none; padding-left: 0; margin: 14px 0; }
+  .steps > li {
+    position: relative;
+    padding: 12px 16px 12px 52px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin: 10px 0;
+    background: #0e1419;
+  }
+  .steps > li::before {
+    counter-increment: step;
+    content: counter(step);
+    position: absolute; left: 14px; top: 12px;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid var(--info-line);
+    font-size: 12.5px; font-weight: 700;
+    display: grid; place-items: center;
+  }
+  .steps .title { font-weight: 650; display: block; margin-bottom: 2px; }
+
+  table { width: 100%; min-width: 0; border-collapse: collapse; margin: 14px 0; font-size: 14px; }
+  th, td { border: 1px solid var(--line); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--bg-soft); font-weight: 650; }
+  tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.02); }
+
+  .tool { border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; margin: 12px 0; background: #0e1419; }
+  .tool-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+  .tool-head code { font-size: 12.5px; }
+  .tool-desc { color: var(--ink-soft); font-size: 14px; margin: 4px 0 8px; }
+  .kv { font-size: 13.5px; color: var(--ink-soft); }
+  .kv b { color: var(--ink); font-weight: 600; }
+
+  .faq { border: 1px solid var(--line); border-radius: var(--radius); margin: 12px 0; overflow: hidden; }
+  .faq summary {
+    cursor: pointer; padding: 12px 16px; font-weight: 600; font-size: 14.5px;
+    background: var(--bg-soft); list-style: none;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::before { content: "▸"; color: var(--ink-faint); margin-right: 8px; }
+  .faq[open] summary::before { content: "▾"; }
+  .faq .answer { padding: 12px 16px 16px; border-top: 1px solid var(--line); }
+  .faq .answer p:first-child { margin-top: 0; }
+  .faq .answer p:last-child { margin-bottom: 0; }
+
+  .tag { font-size: 11.5px; padding: 1px 7px; border-radius: 5px; border: 1px solid var(--line-strong); color: var(--ink-soft); background: rgba(255, 255, 255, 0.04); }
+
+  .footer {
+    margin-top: 60px; padding-top: 18px; border-top: 1px solid var(--line);
+    font-size: 12.5px; color: var(--ink-faint);
+  }
+
+  /* ---------- 站点整合 ---------- */
+  .crumb-bar { margin-bottom: 16px; }
+  .site-footer { margin-left: var(--sidebar-w); }
+
+  @media (max-width: 1080px) {
+    .main { padding: 32px 32px 80px; }
+  }
+
+  /* 窄屏：侧栏改为目录胶囊条，正文占满 */
+  @media (max-width: 900px) {
+    .layout { display: block; }
+    .sidebar {
+      position: static;
+      width: auto;
+      height: auto;
+      padding: 18px 24px 20px;
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .sidebar-brand { margin-bottom: 2px; }
+    .sidebar-sub { margin-bottom: 10px; }
+    .toc-label { margin: 14px 0 6px; }
+    .toc { display: flex; flex-wrap: wrap; gap: 6px; }
+    .toc a {
+      padding: 4px 10px;
+      border: 1px solid var(--line);
+      border-left-width: 1px;
+      border-radius: 999px;
+      font-size: 12.5px;
+    }
+    .toc .sub a { padding-left: 10px; font-size: 12.5px; }
+    .sidebar-foot { display: none; }
+    .site-footer { margin-left: 0; }
+    .toc-wrap { margin: 2px 0 4px; padding: 0 14px; border: 1px solid var(--line); border-radius: 8px; background: #0e1419; }
+    .toc-wrap summary {
+      display: block; padding: 10px 0; list-style: none; cursor: pointer;
+      font-size: 13px; font-weight: 600; color: var(--ink);
+    }
+    .toc-wrap summary::-webkit-details-marker { display: none; }
+    .toc-wrap summary::before { content: "▸"; margin-right: 8px; color: var(--ink-faint); }
+    .toc-wrap[open] summary::before { content: "▾"; }
+    .toc-wrap[open] { padding-bottom: 12px; }
+    .main { margin-left: 0; padding: 24px 20px 72px; }
+    .grid { grid-template-columns: 1fr; }
+    .page table { display: block; overflow-x: auto; }
+    table { font-size: 13px; }
+    th, td { padding: 7px 8px; }
+  }
+</style>
+</head>
+<body data-page="guide">
+  <a class="skip-link" href="#main">跳到主要内容</a>
+  <header class="site-header" data-header>
+    <a class="brand" href="index.html" aria-label="CTF-BTFly 首页"><img src="assets/cpi-icon.png" alt="" width="34" height="34" /><span><strong>CTF-BTFly</strong><small>Windows Agent Workbench</small></span></a>
+    <nav class="desktop-nav" aria-label="主导航"><a href="index.html" data-nav="home">首页</a><a href="features.html" data-nav="features">功能</a><a href="guide.html" data-nav="guide">工具包</a><a href="license.html" data-nav="license">授权激活</a><a href="faq.html" data-nav="faq">常见问题</a><a href="themes/index.html" data-nav="themes">配色主题</a></nav>
+    <a class="header-contact" href="index.html#start">获取测试版</a>
+    <button class="menu-button" type="button" data-menu-button aria-expanded="false" aria-controls="mobile-nav" aria-label="打开导航"><span></span><span></span><span></span></button>
+    <nav class="mobile-nav" id="mobile-nav" data-mobile-nav aria-label="移动端导航"><a href="index.html" data-nav="home">首页</a><a href="features.html" data-nav="features">功能</a><a href="guide.html" data-nav="guide">工具包</a><a href="license.html" data-nav="license">授权激活</a><a href="faq.html" data-nav="faq">常见问题</a><a href="themes/index.html" data-nav="themes">配色主题</a><a href="index.html#start">获取测试版</a></nav>
+  </header>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-logo">BT</div>
+      <div class="sidebar-title">BTFly 工具包</div>
+    </div>
+    <div class="sidebar-sub">使用说明 · 文档版本 2.9.5</div>
+
+    <details class="toc-wrap" open>
+    <summary>文档目录</summary>
+
+    <div class="toc-label">开始</div>
+    <ul class="toc">
+      <li><a href="#intro">这套工具包能做什么</a></li>
+      <li><a href="#contain">工具包里有什么</a></li>
+      <li><a href="#before">用之前先确认</a></li>
+    </ul>
+
+    <div class="toc-label">导入</div>
+    <ul class="toc">
+      <li><a href="#import-ui">方式一：界面按钮导入</a></li>
+      <li><a href="#import-path">方式二：按路径导入（大包）</a></li>
+      <li><a href="#import-check">导入后怎么确认成功</a></li>
+    </ul>
+
+    <div class="toc-label">使用</div>
+    <ul class="toc">
+      <li><a href="#select">创建题目时怎么选工具包</a></li>
+      <li><a href="#call">让 AI 使用工具</a></li>
+      <li><a href="#by-cat">按题型的使用套路</a></li>
+    </ul>
+
+    <div class="toc-label">工具清单</div>
+    <ul class="toc sub">
+      <li><a href="#tools-a">侦察与逆向</a></li>
+      <li><a href="#tools-b">Pwn 与 Crypto</a></li>
+      <li><a href="#tools-c">取证与 Web</a></li>
+      <li><a href="#tools-d">媒体与重型工具</a></li>
+      <li><a href="#tools-e">远程桌面与图像链路</a></li>
+    </ul>
+
+    <div class="toc-label">发行包与兼容</div>
+    <ul class="toc sub">
+      <li><a href="#catalog">本发行版工具包清单</a></li>
+      <li><a href="#tool-catalog">工具清单（按工具包）</a></li>
+      <li><a href="#two-kinds">工具包怎么交付</a></li>
+      <li><a href="#scope">适用范围与兼容性</a></li>
+    </ul>
+
+    <div class="toc-label">排障</div>
+    <ul class="toc">
+      <li><a href="#faq">常见问题 FAQ</a></li>
+      <li><a href="#trouble">故障排查速查表</a></li>
+      <li><a href="#version">版本与更新</a></li>
+    </ul>
+    </details>
+
+    <div class="sidebar-foot">
+      文档版本 2.9.5<br>
+      工具包版本跟随主程序<br>
+      清单由打包流程自动生成<br>
+      <a href="index.html">← 返回站点首页</a>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+    <div class="page">
+
+      <p class="crumb crumb-bar"><a href="index.html">首页</a><span class="crumb-sep" aria-hidden="true">/</span><span>工具包使用说明</span></p>
+      <h1>工具包使用说明</h1>
+      <p class="lede">
+        这份说明书面向日常使用者：告诉你这套工具包能解决什么问题、怎么导入、怎么让 AI 在解题时真正用上它，
+        以及遇到问题时怎么自己修。全文不需要任何命令基础，照着步骤点就行。
+      </p>
+
+      <div class="callout tip">
+        <div class="ico">✓</div>
+        <div class="body">
+          <strong>先看这一句</strong>
+          工具包安装好后，<b>不需要你手动选包</b>。BTFly 会按题目类型自动挂载合适的工具包：
+          Web/杂项用「基础包」，逆向/Pwn 用「基础包 + 逆向增强包」。
+        </div>
+      </div>
+
+      <!-- ============ 1. 简介 ============ -->
+      <h2 id="intro" class="anchor">这套工具包能做什么</h2>
+      <p>
+        它把 CTF 比赛里最常用的一批分析工具打包成「即插即用」的形式：装进 BTFly 之后，
+        AI 在解题时会像调用内置功能一样调用它们，而不是自己去网上找脚本、装依赖。
+      </p>
+
+      <div class="grid">
+        <div class="card">
+          <h4>替你做粗活</h4>
+          <p>一键看二进制结构、加固项、字符串、反汇编片段，不用记 <code>readelf</code>、<code>objdump</code> 那串参数。</p>
+        </div>
+        <div class="card">
+          <h4>少踩环境的坑</h4>
+          <p>Python、Ghidra、nuclei、OCR 全部内置，<b>不联网也能跑</b>，不会出现“我这儿缺个库”。</p>
+        </div>
+        <div class="card">
+          <h4>省下你的时间</h4>
+          <p>实测同一道 PyInstaller 逆向题：有专用工具包 77 秒解完，没有的话要 116 秒（还得联网装包）。</p>
+        </div>
+        <div class="card">
+          <h4>结果可复现</h4>
+          <p>每次工具调用都会记录参数与输出，写出来的解题过程（WP）能被人照着复现。</p>
+        </div>
+      </div>
+
+      <h2 id="contain" class="anchor">工具包里有什么</h2>
+      <p>工具包按用途分成两种「组合包」，组合包本身不含大文件，只是把下面这些独立工具包按需串起来：</p>
+
+      <table>
+        <thead>
+          <tr><th>组合包</th><th>装了什么</th><th>什么时候用</th><th>工具数量</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><b>CTF Full Toolset</b><br><span class="tag">基础包</span></td>
+            <td>ELF 侦察、Pwn 辅助、密码学预检、取证扫描、Web 指纹、nuclei、OCR、Python 逆向工具</td>
+            <td>Web / 杂项 / 密码 / 取证 / 大部分逆向</td>
+            <td>15 个</td>
+          </tr>
+          <tr>
+            <td><b>CTF Full + Reversing</b><br><span class="tag">逆向增强包</span></td>
+            <td>基础包全部内容 + Ghidra 反编译（约 600 MB）</td>
+            <td>逆向 / Pwn（需要看伪代码时）</td>
+            <td>16 个</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        <div class="ico">i</div>
+        <div class="body">
+          <strong>为什么分两个包</strong>
+          逆向增强包里的 Ghidra 体积很大（约 600 MB），装多了会让每次开题变慢。所以只在逆向/Pwn 题里才挂载它，
+          其它题型用基础包，既快又够用。
+        </div>
+      </div>
+
+      <h2 id="before" class="anchor">用之前先确认</h2>
+      <ul>
+        <li>BTFly 主程序为 <b>2.9.x</b>（当前发行版 2.9.5）；工具包清单格式为 <code>schemaVersion: 1</code>，跨 2.9.x 小版本通用。</li>
+        <li>磁盘至少留出 <b>1.5 GB</b> 空间（逆向增强包解压后约 1 GB）。</li>
+        <li>应用里能看到「工具包」设置页（设置 → 工具包）。</li>
+      </ul>
+
+      <!-- ============ 2. 导入 ============ -->
+      <h2 id="import-ui" class="anchor">方式一：界面按钮导入（推荐给普通包）</h2>
+      <ol class="steps">
+        <li>
+          <span class="title">打开工具包页面</span>
+          进入「设置 → 工具包」，页面顶部能看到「导入 .ctfpack」按钮。
+        </li>
+        <li>
+          <span class="title">选择文件</span>
+          点击按钮，选中你下载的 <code>.ctfpack</code> 文件。文件名形如
+          <code>ctfagent.ctf-full-2.9.1.ctfpack</code>。
+        </li>
+        <li>
+          <span class="title">确认未签名提示</span>
+          这些包由本地构建，不是商店签名包，会弹出「确认安装未受信任 Tool Pack？」。
+          勾选/点击<b>「我已检查，继续安装」</b>即可。
+        </li>
+        <li>
+          <span class="title">等待安装完成</span>
+          小包（几十 MB）几秒完成；逆向增强包（约 600 MB）需要 20 秒到 1 分钟，请勿关闭窗口。
+        </li>
+        <li>
+          <span class="title">确认已启用</span>
+          安装完成后，包默认是「已安装但未启用」还是「已启用」取决于版本，稳妥起见在列表里确认「启用包」是打开状态。
+        </li>
+      </ol>
+
+      <div class="callout warn">
+        <div class="ico">!</div>
+        <div class="body">
+          <strong>大包建议用「按路径导入」</strong>
+          超过约 200 MB 的包（尤其是逆向增强包），用下面的路径方式导入更稳，不会让界面卡住。
+        </div>
+      </div>
+
+      <h2 id="import-path" class="anchor">方式二：按路径导入（大包专用，更稳）</h2>
+      <p>如果你的包很大，或者界面导入一直转圈，用这个方式：文件不经过浏览器，由后台直接读取。</p>
+      <ol class="steps">
+        <li>
+          <span class="title">复制文件完整路径</span>
+          在文件管理器里右键 <code>.ctfpack</code> 文件 → 属性 → 复制「位置 + 文件名」，
+          例如 <code>D:\packs\ctfagent.ctf-full-re-2.9.1.ctfpack</code>。
+        </li>
+        <li>
+          <span class="title">粘贴到「从本地路径导入」</span>
+          工具包页面有一行「从本地路径导入（大包推荐）」的输入框，把路径粘贴进去。
+        </li>
+        <li>
+          <span class="title">点击「从路径导入」</span>
+          同样会弹未签名确认，确认后等待完成即可。
+        </li>
+      </ol>
+
+      <div class="callout">
+        <div class="ico">i</div>
+        <div class="body">
+          <strong>路径要求</strong>
+          必须是<b>绝对路径</b>且以 <code>.ctfpack</code> 结尾，例如
+          <code>D:\packs\xxx.ctfpack</code>。相对路径会被拒绝并提示正确示例。
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="ico">!</div>
+        <div class="body">
+          <p><b>命令行/脚本导入时的编码要求（重要）</b></p>
+          <p>如果你不是用界面、而是用脚本或命令行走 <code>POST /api/toolpacks/import-path</code> 导入，请求体的 JSON <b>必须是 UTF-8 编码</b>。当路径包含中文（例如 <code>D:\packs\需要导入\...</code>）时，用系统默认的 GBK/ANSI 写出的 JSON 会让后台收到乱码路径，报「The system cannot find the path specified」。</p>
+          <p>正确写法示例：</p>
+          <p><code>python -c "import json,sys; sys.stdout.buffer.write(json.dumps({'path': r'D:\你的路径\包.ctfpack'}, ensure_ascii=False).encode('utf-8'))"</code></p>
+          <p>或指定 <code>PYTHONIOENCODING=utf-8</code>；PowerShell 用 <code>Out-File -Encoding utf8</code>。</p>
+          <p>另外，未签名工具包需要请求头 <code>X-CTFAgent-Untrusted-Code-Consent: install-this-tool-pack</code>，否则会返回 <code>TOOLPACK_UNTRUSTED_CONSENT_REQUIRED</code>。</p>
+        </div>
+      </div>
+
+      <h2 id="import-check" class="anchor">导入后怎么确认成功</h2>
+      <ul>
+        <li>工具包列表里出现对应条目，且「启用包」为开启状态。</li>
+        <li>条目下方的工具列表，每个工具右侧的「启用」开关都是打开状态。</li>
+        <li>右上角「已安装 N 个包 · M 个工具」计数增加。</li>
+        <li><b>最关键的一步</b>：去「设置 → MCP」页，确认能看到 <code>toolpacks</code>（Tool Pack Bridge）并且是启用状态。</li>
+      </ul>
+
+      <div class="callout tip">
+        <div class="ico">✓</div>
+        <div class="body">
+          <strong>导入后什么时候生效</strong>
+          <b>2.9.3.5 及以后</b>：导入完成后最多等 30 秒，AI 的工具列表里就会出现新工具，<b>不需要重启应用</b>。<br>
+          <b>2.9.3.4 及以前</b>：必须完全退出并重新打开应用。
+        </div>
+      </div>
+
+      <div class="callout">
+        <div class="ico">i</div>
+        <div class="body">
+          <strong>已经跑起来的任务看不到新工具</strong>
+          MCP 服务绑定是在<b>创建任务时冻结</b>的。导入新包后请<b>新建一道题</b>，旧任务不会热更新工具列表。
+        </div>
+      </div>
+
+      <!-- ============ 3. 使用 ============ -->
+      <h2 id="select" class="anchor">创建题目时怎么选工具包</h2>
+      <p>
+        <b>不需要你选。</b>BTFly 内部只保留一个「载体包」负责把沙箱跑起来（默认 <code>ctfagent.windows-base</code>），
+        而<b>所有已安装工具包的工具都通过 MCP 服务统一暴露给 AI</b>，AI 自己按题型挑。
+      </p>
+      <table>
+        <thead><tr><th>角色</th><th>由谁承担</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>沙箱载体（必需）</td><td><code>ctfagent.windows-base</code></td><td>随发行版内置，装完即可建题</td></tr>
+          <tr><td>工具来源（按需）</td><td>其余全部工具包</td><td>通过 MCP 暴露，导入即可用，AI 自主调用</td></tr>
+          <tr><td>目录视图</td><td><code>ctfagent.ctf-full</code></td><td>内置，提供一个 <code>list-packs</code> 工具，让 AI 看到有哪些包</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout tip">
+        <div class="ico">✓</div>
+        <div class="body">
+          <strong>「一个包坏掉导致建不了题」已不再发生</strong>
+          载体包只影响沙箱能否启动；其余工具包即使缺失、损坏或依赖不全，也只会让 AI 少几个工具，任务照常能起。
+        </div>
+      </div>
+
+      <h2 id="call" class="anchor">让 AI 使用工具</h2>
+      <p>
+        <b>所有工具包工具都经由 MCP 调用。</b>AI 看到的工具名形如
+        <code>packs__ctfagent_media_ocr_ocr</code>（<code>packs__</code> 前缀 + 包名 + 工具名）。
+        你不需要记这些名字，只要说清楚要做什么，AI 会自己挑。
+      </p>
+      <p>想让它一定优先用工具、而不是自己敲命令，可以这样写：</p>
+      <pre><code>请优先使用已注册的工具（名字以 packs__ 开头），不要用 bash 直接拼脚本命令行。
+需要看图 / 读文字时优先调用 packs__ctfagent_media_ocr_ocr（OCR）；
+需要分析二进制时优先调用 packs__ctfagent_elf_recon_*。
+先看附件类型，再选合适的工具分析，最后给出结论与依据。</code></pre>
+
+      <div class="callout">
+        <div class="ico">i</div>
+        <div class="body">
+          <strong>工具在宿主侧执行，工作目录是本题 workspace</strong>
+          工具内部按<b>相对路径</b>访问附件与产物（例如 <code>attachments/a.png</code>、<code>artifacts/out.txt</code>），
+          绝对路径也能用。工具会自己校验参数，漏了必填项会直接返回参数说明，AI 会照着重试。
+        </div>
+      </div>
+
+      <div class="callout warn">
+        <div class="ico">!</div>
+        <div class="body">
+          <strong>MCP 工具在宿主机执行，不在 AppContainer 内</strong>
+          这是刻意的设计取舍：工具用宿主权限运行，因此能读写你用户目录下的文件。
+          请只导入你自己构建或审核过的 <code>.ctfpack</code>。沙箱隔离只约束 AI 的内置工具（bash / 读写文件）。
+        </div>
+      </div>
+
+      <h2 id="by-cat" class="anchor">按题型的使用套路</h2>
+
+      <h3>逆向：先看是什么，再解包，最后看字节码</h3>
+      <ol class="steps">
+        <li><span class="title">判断文件类型</span><code>pe-summary</code> 看是不是 PE / PyInstaller / UPX 打包。</li>
+        <li><span class="title">解包</span>如果是 PyInstaller，用 <code>pyinstxtractor</code> 解出 <code>.pyc</code>。</li>
+        <li><span class="title">反汇编</span>用 <code>pyc-disasm</code> 看字节码；需要伪代码时用 <code>decompile</code>（Ghidra）。</li>
+        <li><span class="title">写解法</span>让 AI 把还原出的逻辑写成 <code>solve.py</code>，并验证目标串。</li>
+      </ol>
+
+      <h3>Pwn：先摸底，再找 gadget</h3>
+      <ol class="steps">
+        <li><span class="title">看二进制</span><code>elf-summary</code> 一次性拿到架构、PIE/RELRO/NX/Canary。</li>
+        <li><span class="title">看字符串与符号</span><code>strings</code> 找提示与后门函数名。</li>
+        <li><span class="title">找 gadget</span><code>gadget-summary</code> 按约束分类，不用翻几万行。</li>
+        <li><span class="title">写 exp</span>让 AI 用内置 pwntools 写脚本，先本地跑通再打远端。</li>
+      </ol>
+
+      <h3>Web：先指纹，再扫面</h3>
+      <ol class="steps">
+        <li><span class="title">单请求指纹</span><code>http-baseline</code> 看状态码、关键安全头、标题、长度。</li>
+        <li><span class="title">低噪扫描</span><code>nuclei-scan</code> 默认限速 3 请求/秒、超时 5 秒，不会把靶机打挂。</li>
+        <li><span class="title">人工判断</span>扫描只给线索，是否深入由你决定。</li>
+      </ol>
+
+      <h3>密码：先排掉低级错误</h3>
+      <ol class="steps">
+        <li><span class="title">RSA 预检</span><code>rsa-quickcheck</code> 检查 e 太小、共模、小素数等常见陷阱。</li>
+        <li><span class="title">再用 z3</span>复杂约束交给内置 z3 求解。</li>
+      </ol>
+
+      <h3>取证与杂项</h3>
+      <ol class="steps">
+        <li><span class="title">扫规则</span><code>yara</code> 用内置 CTF 规则找 flag 形状、webshell、base64 块。</li>
+        <li><span class="title">看图片文字</span><code>ocr</code> 识别截图/扫描件里的文字。</li>
+        <li><span class="title">看十六进制</span><code>hexdump</code> 按偏移切片，不会把整个文件倒进上下文。</li>
+      </ol>
+
+      <!-- ============ 4. 工具清单 ============ -->
+      <h2 id="tools-a" class="anchor">工具清单 · 侦察与逆向</h2>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_elf_recon__elf_summary</code><span class="pill gray">只读</span></div>
+        <div class="tool-desc">把 ELF 文件的架构、位数、类型、入口、加固项（PIE/RELRO/NX/Canary）、依赖库、关键符号、节表一次性变成 JSON。</div>
+        <div class="kv"><b>参数：</b><code>path</code>（文件路径）、<code>maxSections</code>（默认 40）、<code>symbols</code>（默认 60）</div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_elf_recon__disasm</code><span class="pill gray">只读</span></div>
+        <div class="tool-desc">从入口点开始的反汇编片段，默认 120 条，支持 x86 / x86-64 / ARM / AArch64。</div>
+        <div class="kv"><b>参数：</b><code>path</code>、<code>count</code>、<code>architecture</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_elf_recon__strings</code><span class="pill gray">只读</span></div>
+        <div class="tool-desc">按信息量排序的可打印字符串（URL/路径/flag 形状/哈希/base64），只回前 N 条。</div>
+        <div class="kv"><b>参数：</b><code>path</code>、<code>minLength</code>（默认 6）、<code>top</code>（默认 60）</div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_elf_recon__hexdump</code><span class="pill gray">只读</span></div>
+        <div class="tool-desc">按偏移与长度切片十六进制，带 ASCII 对照。看文件头、结构体最方便。</div>
+        <div class="kv"><b>参数：</b><code>path</code>、<code>offset</code>、<code>length</code>（默认 256）</div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_py_rev__pe_summary</code><span class="pill green">离线内置</span></div>
+        <div class="tool-desc">PE 摘要：位数、入口、节表、导入 DLL 数量，并提示是否 PyInstaller / .NET / UPX 打包。</div>
+        <div class="kv"><b>参数：</b><code>path</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_py_rev__pyinstxtractor</code><span class="pill green">离线内置</span></div>
+        <div class="tool-desc">解包 PyInstaller 程序，产物在同级 <code>&lt;文件名&gt;_extracted/</code>，里面能找到 <code>.pyc</code>。</div>
+        <div class="kv"><b>参数：</b><code>path</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_py_rev__pyc_disasm</code><span class="pill green">离线内置</span></div>
+        <div class="tool-desc">反汇编 <code>.pyc</code>，跨 Python 版本（内置 xdis），默认 400 行、可调。</div>
+        <div class="kv"><b>参数：</b><code>path</code>、<code>maxLines</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_re_ghidra__decompile</code><span class="pill amber">重型 · 仅逆向包</span></div>
+        <div class="tool-desc">用 Ghidra 做无界面分析，导出前 N 个函数的伪 C（默认 40）。首次分析大文件需要几分钟。</div>
+        <div class="kv"><b>参数：</b><code>path</code>、<code>maxFunctions</code>、<code>analysisTimeoutSeconds</code></div>
+      </div>
+
+      <h2 id="tools-b" class="anchor">工具清单 · Pwn 与 Crypto</h2>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_pwn_kit__gadget_summary</code><span class="pill gray">只读</span></div>
+        <div class="tool-desc">把 ROPgadget 的海量输出按约束聚类（pop rdi/rsi/rdx/rax、syscall、写内存、栈迁移等），每类只给几条。</div>
+        <div class="kv"><b>参数：</b><code>path</code>、<code>maxPerCategory</code>（默认 3）、<code>timeout</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_crypto_lattice__rsa_quickcheck</code><span class="pill gray">离线</span></div>
+        <div class="tool-desc">RSA 攻击面预检：素模数、e=1/e=3 无填充、共模、Wiener 小 d、小素数因子。只给候选，不做大规模分解。</div>
+        <div class="kv"><b>参数：</b><code>n</code>、<code>e</code>、<code>c</code>、<code>n2</code></div>
+      </div>
+
+      <h2 id="tools-c" class="anchor">工具清单 · 取证与 Web</h2>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_forensics_scan__yara</code><span class="pill green">离线</span></div>
+        <div class="tool-desc">用内置 CTF 规则扫描文件（flag 形状、PHP webshell、base64 大块、PowerShell 下载原语），返回命中位置。</div>
+        <div class="kv"><b>参数：</b><code>path</code>、<code>maxMatches</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_web_recon__http-baseline</code><span class="pill amber">联网</span></div>
+        <div class="tool-desc">单请求 HTTP 指纹：状态码、关键安全头、页面标题、响应长度。不做任何爆破。</div>
+        <div class="kv"><b>参数：</b><code>url</code>、<code>method</code>（默认 GET）</div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_web_nuclei__nuclei-scan</code><span class="pill amber">联网 · 限速</span></div>
+        <div class="tool-desc">nuclei 低噪模板扫描，默认 3 请求/秒、5 秒超时，只回 JSONL 命中行。</div>
+        <div class="kv"><b>参数：</b><code>url</code>、<code>rateLimit</code>、<code>timeoutSeconds</code></div>
+      </div>
+
+      <h2 id="tools-d" class="anchor">工具清单 · 媒体与重型工具</h2>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_media_ocr__ocr</code><span class="pill green">离线</span></div>
+        <div class="tool-desc">图片文字识别（默认英文+简体中文），适合截图、扫描件、验证码类图片。</div>
+        <div class="kv"><b>参数：</b><code>path</code>、<code>language</code>、<code>psm</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_ctf_full__list-packs</code><span class="pill gray">诊断</span></div>
+        <div class="tool-desc">列出本任务实际挂载了哪些工具包、每个包有哪些工具。怀疑“工具没生效”时先跑它。</div>
+        <div class="kv"><b>参数：</b>无</div>
+      </div>
+
+      <!-- ============ 4.5 新增工具包（远程桌面 / 图像 / 二维码 / TOTP / 网络探测） ============ -->
+      <h2 id="tools-e" class="anchor">工具清单 · 远程桌面与图像链路（v2.9.1 新增）</h2>
+
+      <p>这一组工具面向「只暴露一个静默 TCP 端口的自助终端」这类题目，覆盖从协议识别到键鼠注入的完整链路。全部为随包分发的离线件，除标注「网络」的工具外不访问外网。</p>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_remote_vnc__vnc_probe</code><span class="pill blue">网络</span></div>
+        <div class="tool-desc">识别静默端口是否为 RFB/VNC：主动发送 <code>RFB 003.008\n</code>（服务端在收到客户端版本前不会说话），返回协议版本、安全类型列表、是否需要口令。</div>
+        <div class="kv"><b>参数：</b><code>mode</code>（固定 probe）、<code>host</code>、<code>port</code>、<code>timeout</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_remote_vnc__vnc_shot</code><span class="pill blue">网络</span></div>
+        <div class="tool-desc">认证后抓取全屏或指定区域的 PNG 截图。强制 32bpp 真彩色 + Raw 编码，无需任何解压库。</div>
+        <div class="kv"><b>参数：</b><code>mode</code>（固定 shot）、<code>host</code>、<code>port</code>、<code>password</code>（无认证传 <code>-</code>）、<code>out</code>、<code>crop</code>（<code>x,y,w,h</code> 或 <code>-</code>）、<code>timeout</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_remote_vnc__vnc_act</code><span class="pill blue">网络</span></div>
+        <div class="tool-desc">在一次会话内注入鼠标与键盘事件，并可保存最终截图。动作用分号分隔的 DSL 表达。</div>
+        <div class="kv"><b>参数：</b><code>mode</code>（固定 act）、<code>host</code>、<code>port</code>、<code>password</code>、<code>actions</code>、<code>out</code>、<code>timeout</code></div>
+        <div class="kv"><b>动作语法：</b><code>click:x,y</code>、<code>move:x,y</code>、<code>key:Return</code>、<code>keydown:Control_L</code>、<code>keyup:Control_L</code>、<code>type:文本</code>、<code>paste:文本</code>、<code>wait:秒</code>、<code>shot:路径[,x,y,w,h]</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_screen__screen_triage</code><span class="pill green">离线</span></div>
+        <div class="tool-desc">无显示器时的截图分析：<code>ascii</code> 生成亮度字符画看布局、<code>diff</code> 用像素差判断界面是否真的变化、<code>crop</code> 裁剪放大、<code>qr</code> 二维码二值化预处理、<code>info</code> 基础信息。</div>
+        <div class="kv"><b>参数：</b><code>mode</code>、<code>image</code>、<code>image2</code>（仅 diff 用）、<code>params</code>、<code>out</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_qr__qr_decode</code><span class="pill green">离线</span></div>
+        <div class="tool-desc">用随包内置的 zxing-cpp 解码二维码/条码，返回文本、格式、字节 hex、有效性与四角坐标。不需要 zbar、pyzbar 或任何系统安装。</div>
+        <div class="kv"><b>参数：</b><code>mode</code>（固定 decode）、<code>image</code>、<code>out</code>（传 <code>-</code>）、<code>text</code>（传 <code>-</code>）</div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_qr__qr_generate</code><span class="pill green">离线</span></div>
+        <div class="tool-desc">把任意负载渲染成二维码 PNG，用于自检、候选种子比对与写进 WRITEUP 的可扫码产物。</div>
+        <div class="kv"><b>参数：</b><code>mode</code>（固定 generate）、<code>image</code>（传 <code>-</code>）、<code>out</code>、<code>text</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_totp__totp_generate</code><span class="pill green">离线</span></div>
+        <div class="tool-desc">RFC 6238 动态口令生成，支持计数器偏移扫描。靶机时钟常与本地不同步，建议一次取 <code>0,-1,1,-2,2</code> 逐个试。</div>
+        <div class="kv"><b>参数：</b><code>secret</code>、<code>digits</code>（6/7/8）、<code>period</code>（通常 30）、<code>algorithm</code>（sha1/sha256/sha512）、<code>offsets</code>、<code>timestamp</code>（<code>-</code> 表示现在）</div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_net_probe__net_greet</code><span class="pill blue">网络</span></div>
+        <div class="tool-desc">按协议发主动问候并读响应：RFB、SMTP、POP3、IMAP、Redis、Memcached、HTTP 为主动问候；FTP、SSH、MySQL、Telnet 为被动等 banner。</div>
+        <div class="kv"><b>参数：</b><code>host</code>、<code>port</code>、<code>protocols</code>（<code>auto</code> 或 <code>rfb,redis</code> 这类子集）、<code>timeout</code></div>
+      </div>
+
+      <div class="tool">
+        <div class="tool-head"><code>packs__ctfagent_net_probe__net_reach</code><span class="pill blue">网络</span></div>
+        <div class="tool-desc">探测超时后先跑它：区分「跨网段死路」「有路由但被过滤」「对端 RST（端口关闭）」「已监听」，并返回本机 IP、是否同 /24、沙箱注入的代理变量。一次调用替代 ipconfig/route/ping 四五步。</div>
+        <div class="kv"><b>参数：</b><code>host</code>、<code>port</code>、<code>timeout</code></div>
+      </div>
+
+      <!-- ============ 4.55 两类工具包 ============ -->
+      <h2 id="catalog" class="anchor">本发行版适用的工具包清单</h2>
+
+      <p>下表由打包流程在生成发行版时自动写入，列出这个版本实际附带、并且可以直接导入的全部工具包。清单随版本变化，请以本表为准。</p>
+
+      <!-- PACK_CATALOG_START -->
+<div class="kv"><b>发行版本：</b><code>2.9.5.5</code></div>
+<div class="kv"><b>工具包总数：</b>19 个（随版本内置 2 个 · 需手动导入 17 个）</div>
+<div class="kv"><b>工具总数：</b>34 个</div>
+<div class="kv"><b>生成方式：</b>打包时按实际产物目录自动生成，与发行包内容一致。</div>
+
+<details class="faq" open>
+<summary>随版本内置（无需导入）（2 个）</summary>
+<div class="kv"><b>说明：</b>解压目录 <code>ToolPacks\</code> 内，首次启动自动安装并启用。</div>
+<div class="kv">· <code>ctfagent.ctf-full</code> · v2.9.2 · 2 KB · 1 个工具</div>
+<div class="kv">· <code>ctfagent.windows-base</code> · v1.2.0 · 3.5 MB · 7 个工具</div>
+</details>
+
+<details class="faq" open>
+<summary>需手动导入（按需挑选）（17 个）</summary>
+<div class="kv"><b>说明：</b>文件名不带版本号，放在发行包之外（仓库 <code>bin\工具包\</code>），在「工具包」页面按住 Ctrl 多选导入。</div>
+<div class="kv">· <code>ctfagent.crypto-lattice</code> · v2.9.1 · 8.1 MB · 1 个工具</div>
+<div class="kv">· <code>ctfagent.ctf-essentials</code> · v2.9.1 · 2 KB · 1 个工具</div>
+<div class="kv">· <code>ctfagent.ctf-full-re</code> · v2.9.1 · 14 KB · 1 个工具</div>
+<div class="kv">· <code>ctfagent.elf-recon</code> · v2.9.1 · 12 KB · 4 个工具</div>
+<div class="kv">· <code>ctfagent.forensics-scan</code> · v2.9.1 · 1.1 MB · 1 个工具</div>
+<div class="kv">· <code>ctfagent.media-ocr</code> · v2.9.1.1 · 44.6 MB · 1 个工具</div>
+<div class="kv">· <code>ctfagent.net-probe</code> · v2.9.1 · 7 KB · 2 个工具</div>
+<div class="kv">· <code>ctfagent.ocr-rapid</code> · v2.9.1.2 · 92.2 MB · 1 个工具</div>
+<div class="kv">· <code>ctfagent.pwn-kit</code> · v2.9.1 · 3 KB · 1 个工具</div>
+<div class="kv">· <code>ctfagent.py-rev</code> · v2.9.1 · 274 KB · 3 个工具</div>
+<div class="kv">· <code>ctfagent.qr</code> · v2.9.1 · 1.0 MB · 2 个工具</div>
+<div class="kv">· <code>ctfagent.re-ghidra</code> · v2.9.1 · 607.7 MB · 1 个工具</div>
+<div class="kv">· <code>ctfagent.remote-vnc</code> · v2.9.1 · 8 KB · 3 个工具</div>
+<div class="kv">· <code>ctfagent.screen</code> · v2.9.1 · 4 KB · 1 个工具</div>
+<div class="kv">· <code>ctfagent.totp</code> · v2.9.1 · 3 KB · 1 个工具</div>
+<div class="kv">· <code>ctfagent.web-nuclei</code> · v2.9.1 · 43.0 MB · 1 个工具</div>
+<div class="kv">· <code>ctfagent.web-recon</code> · v2.9.1 · 4.2 MB · 1 个工具</div>
+</details>
+
+      <!-- PACK_CATALOG_END -->
+
+      <h2 id="tool-catalog" class="anchor">工具清单（按工具包）</h2>
+
+      <p>这一节列出每个工具包里具体有哪些工具。展开任意一个包即可看到工具 ID、名称与用途说明。</p>
+
+      <!-- TOOL_CATALOG_START -->
+<p>下表按工具包分组，列出每个包实际提供的工具。内容由打包流程从各包 <code>manifest.json</code> 与 <code>tools\*.json</code> 自动汇总。</p>
+
+<details class="faq">
+<summary><code>ctfagent.crypto-lattice</code> · 需手动导入 · v2.9.1 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>Crypto Lattice</div>
+<div class="kv"><b>体积：</b>8.1 MB</div>
+<div class="kv">· <code>crypto-lattice.rsa-quickcheck</code> —— rsa-quickcheck<br>Offline RSA pre-checks: prime modulus, e=1/e=3 no-padding, common factor with a second modulus, Wiener small-d, small prime factors. Returns candidate attacks only; never runs large factoring.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.ctf-essentials</code> · 需手动导入 · v2.9.1 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>CTF Essentials</div>
+<div class="kv"><b>体积：</b>2 KB</div>
+<div class="kv">· <code>ctf-essentials.list-packs</code> —— list-packs<br>List the Tool Pack roots resolved for the current task and the tools each pack exposes. Use it to confirm the dependency closure (essentials pulls in recon, pwn, crypto, forensics, web packs).</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.ctf-full</code> · 随版本内置 · v2.9.2 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>CTF Full（工具包目录）</div>
+<div class="kv"><b>体积：</b>2 KB</div>
+<div class="kv">· <code>ctf-full.list-packs</code> —— list-packs<br>List every installed and enabled Tool Pack together with the tools each one exposes. Use this to decide which tool pack fits the current challenge before calling a specific tool.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.ctf-full-re</code> · 需手动导入 · v2.9.1 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>CTF Full + Reversing (meta)</div>
+<div class="kv"><b>体积：</b>14 KB</div>
+<div class="kv">· <code>ctf-full.list-packs</code> —— list-packs<br>List every Tool Pack root resolved for this task (the full meta pack pulls in every installed pack) and the tools each exposes.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.elf-recon</code> · 需手动导入 · v2.9.1 · 4 个工具</summary>
+<div class="kv"><b>包名称：</b>ELF Recon</div>
+<div class="kv"><b>体积：</b>12 KB</div>
+<div class="kv">· <code>elf-recon.disasm</code> —— disasm<br>Bounded disassembly from the ELF entry point using capstone (x86/x86-64/arm/aarch64), capped at N instructions (default 120). Replaces `objdump -d` for a first look without binutils.</div>
+<div class="kv">· <code>elf-recon.elf-summary</code> —— elf-summary<br>Summarize an ELF file as JSON: arch/bits/endian/type/entry, hardening (PIE/RELRO/NX/Canary/FORTIFY), NEEDED libraries, symbols of interest, sections and segments. Never executes the target. Use this instead of raw readelf -a to avoid dumping thousands of lines into context.</div>
+<div class="kv">· <code>elf-recon.hexdump</code> —— hexdump<br>Hex dump a bounded slice (offset + length, default 256 bytes) with an ASCII gutter, returned as JSON lines. Use for magic bytes and structure headers.</div>
+<div class="kv">· <code>elf-recon.strings</code> —— strings<br>Extract printable strings ranked by information value (URL/path/flag-shape/hash/base64/length) and return only the top N with offsets. Replaces `strings -a file | head` and never floods the context.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.forensics-scan</code> · 需手动导入 · v2.9.1 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>Forensics Scan</div>
+<div class="kv"><b>体积：</b>1.1 MB</div>
+<div class="kv">· <code>forensics-scan.yara</code> —— yara<br>Scan a file with the pack's built-in CTF YARA rules (flag shapes, PHP webshells, base64 blobs, PowerShell download primitives) and return structured hits with offsets. Offline, read-only.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.media-ocr</code> · 需手动导入 · v2.9.1.1 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>Media OCR</div>
+<div class="kv"><b>体积：</b>44.6 MB</div>
+<div class="kv">· <code>media-ocr.ocr</code> —— ocr<br>Run Tesseract OCR on an image and return recognized text as JSON. Tesseract and the eng+chi_sim models ship inside this pack, so no system install or network access is required. Accepts workspace-relative or absolute image paths. Defaults to eng+chi_sim with --psm 3.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.net-probe</code> · 需手动导入 · v2.9.1 · 2 个工具</summary>
+<div class="kv"><b>包名称：</b>Network Probe</div>
+<div class="kv"><b>体积：</b>7 KB</div>
+<div class="kv">· <code>netprobe.greet</code> —— net-greet<br>Active greeting probe for a TCP port that never speaks first. Sends the protocol-appropriate greeting (RFB 003.008, EHLO, PING, CAPA, version, GET /) and, for passive protocols (SSH, FTP, MySQL, Telnet), simply waits for the server banner. Use this before concluding a port is down: nmap -sV, curl and a bare nc all report 'no service' against RFB and other silent protocols. Returns per-protocol matches plus a best guess.</div>
+<div class="kv">· <code>netprobe.reach</code> —— net-reach<br>Reachability triage before blaming the target. Reports this sandbox's local IPv4 addresses, whether the target is on a local /24, the proxy variables the sandbox injected, and a real TCP connect result. Distinguishes an off-subnet dead end (no route at all) from a filtered port (route exists, no answer) from a closed port (RST) from a listening port. Use this immediately after a protocol probe times out, instead of hand-writing ipconfig/route/ping sequences.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.ocr-rapid</code> · 需手动导入 · v2.9.1.2 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>RapidOCR (ONNX)</div>
+<div class="kv"><b>体积：</b>92.2 MB</div>
+<div class="kv">· <code>ocr-rapid.recognize</code> —— ocr-rapid<br>Heavy-duty OCR backed by RapidOCR (ONNX). Better than the bundled tesseract on handwriting, skewed text, low-contrast UI labels and mixed Chinese/English screenshots, at the cost of a ~260MB pack and a slower first call. Returns the recognized text plus per-line boxes and confidence scores. Use the lighter `ctfagent.media-ocr` ocr tool first; switch here when tesseract output is empty or garbled.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.pwn-kit</code> · 需手动导入 · v2.9.1 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>Pwn Kit</div>
+<div class="kv"><b>体积：</b>3 KB</div>
+<div class="kv">· <code>pwn-kit.gadget-summary</code> —— gadget-summary<br>Run ROPgadget (bundled with the Python runtime) and cluster gadgets by constraint: pop rdi/rsi/rdx/rax, syscall, write-mem, leave;ret, stack pivot. Returns at most N examples per category instead of tens of thousands of lines.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.py-rev</code> · 需手动导入 · v2.9.1 · 3 个工具</summary>
+<div class="kv"><b>包名称：</b>Python Reversing Kit</div>
+<div class="kv"><b>体积：</b>274 KB</div>
+<div class="kv">· <code>py-rev.pe-summary</code> —— pe-summary<br>Summarize a PE file as JSON: machine/bits/entry/subsystem, sections, imported DLL count, and packer hints (PyInstaller/.NET/UPX). Never executes the sample.</div>
+<div class="kv">· <code>py-rev.pyc-disasm</code> —— pyc-disasm<br>Disassemble a .pyc file with vendored xdis across Python versions (default 400 lines). Use after extracting a PyInstaller archive.</div>
+<div class="kv">· <code>py-rev.pyinstxtractor</code> —— pyinstxtractor<br>Extract a PyInstaller-packed executable (offline: pyinstxtractor-ng is vendored in the pack). Returns the extractor log; output directory is &lt;sample&gt;_extracted.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.qr</code> · 需手动导入 · v2.9.1 · 2 个工具</summary>
+<div class="kv"><b>包名称：</b>QR Tools</div>
+<div class="kv"><b>体积：</b>1.0 MB</div>
+<div class="kv">· <code>qr.decode</code> —— qr-decode<br>Decode QR codes and other barcodes from a workspace image using the zxing-cpp build bundled in this pack. No zbar, pyzbar, or system install required. Returns each symbol's text, format, byte hex, validity and corner positions. For a screenshot, crop the symbol region first (screen-triage crop) and upscale it if the first attempt finds nothing. Typical use: an enrolment page shows an otpauth:// URI whose secret is the TOTP seed.</div>
+<div class="kv">· <code>qr.generate</code> —— qr-generate<br>Render a payload as a QR PNG in the workspace. Useful for self-tests of the decode path, for comparing a candidate TOTP seed against a captured symbol, and for producing a scannable artefact in the writeup. Decoding remains the job of qr-decode.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.re-ghidra</code> · 需手动导入 · v2.9.1 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>Ghidra Headless</div>
+<div class="kv"><b>体积：</b>607.7 MB</div>
+<div class="kv">· <code>re-ghidra.decompile</code> —— decompile<br>Import a binary into a throwaway Ghidra project and export decompiled C for up to N functions (default 40). Analysis runs headless with the bundled JDK 25; the project is deleted afterwards. First run of a large binary can take minutes.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.remote-vnc</code> · 需手动导入 · v2.9.1 · 3 个工具</summary>
+<div class="kv"><b>包名称：</b>Remote VNC</div>
+<div class="kv"><b>体积：</b>8 KB</div>
+<div class="kv">· <code>remote-vnc.vnc-act</code> —— vnc-act<br>Authenticate to a VNC server, then inject mouse and keyboard input in one session and optionally capture the final screen. Actions is a semicolon-separated DSL: click:x,y, move:x,y, key:Return, keydown:Control_L, keyup:Control_L, type:text, paste:text, wait:seconds, shot:path, shot:path,x,y,w,h. Use keydown/keyup pairs for modifier combinations; a single key press has no modifiers parameter. paste: sends text through the RFB clipboard channel (ClientCutText) which is far faster than per-character typing on long commands, but some servers ignore it, so verify with a screenshot. Prefer short commands, and confirm each batch with a pixel diff.</div>
+<div class="kv">· <code>remote-vnc.vnc-probe</code> —— vnc-probe<br>Identify a silent TCP port as an RFB/VNC server. Sends the client version 'RFB 003.008\n' first, because an RFB server stays silent until the client states its protocol revision, so nmap -sV and curl both report 'no service'. Returns the server version, the advertised security types, and whether a password is required. Use this before concluding that a port is down.</div>
+<div class="kv">· <code>remote-vnc.vnc-shot</code> —— vnc-shot<br>Authenticate to a VNC server and capture a full-screen or cropped PNG screenshot into the workspace. Forces a 32bpp true-colour pixel format and the Raw encoding, so no decompressor or vncdotool is required. Crop before OCR: a small upscaled region is both faster and more accurate than a full-screen pass. Remember that only a pixel diff proves the UI changed.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.screen</code> · 需手动导入 · v2.9.1 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>Screen Triage</div>
+<div class="kv"><b>体积：</b>4 KB</div>
+<div class="kv">· <code>screen.triage</code> —— screen-triage<br>Inspect a captured screenshot without a display. mode=ascii renders a brightness ramp so window edges and text blocks become visible as characters (use before any OCR); mode=diff reports the fraction of changed pixels between two images, which is the only trustworthy proof that a UI reacted; mode=crop crops and upscales a region for a later OCR pass; mode=qr binarises, crops to content and nearest-neighbour upscales a QR symbol so it becomes readable (the sandbox has no zbar/pyzbar/zxing, so decoding is the reader's job, not this tool's); mode=info reports dimensions, mean brightness and distinct greyscale levels. Never treat non-empty OCR text as success: a diff is the evidence.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.totp</code> · 需手动导入 · v2.9.1 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>TOTP</div>
+<div class="kv"><b>体积：</b>3 KB</div>
+<div class="kv">· <code>totp.generate</code> —— totp-generate<br>Generate RFC 6238 TOTP codes from a Base32 secret, sweeping counter offsets. Use when a challenge enrolment page reveals an otpauth:// URI (or a bare secret) and the login still rejects the code: the target container clock is often skewed, so try offsets 0,-1,1,-2,2 before assuming the secret is wrong. Returns one code per offset plus the counter it came from.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.web-nuclei</code> · 需手动导入 · v2.9.1 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>Web Nuclei</div>
+<div class="kv"><b>体积：</b>43.0 MB</div>
+<div class="kv">· <code>web-nuclei.scan</code> —— nuclei-scan<br>FIRST STEP for any web recon: run this BEFORE writing your own enumeration script or reaching for ffuf/gobuster (neither is installed in this sandbox, and no wordlist ships with it). One call replaces dozens of hand-rolled guesses because the pack already encodes the high-value paths. Five low-noise template groups cover: exposed .git/.svn/.hg metadata, .env files and backup archives (backup.zip/www.zip/db.sql); debug consoles (Spring Actuator, Swagger UI, phpinfo, Apache server-status); directory listing; version banners; and wildcard CORS with credentials. Returns JSONL where each finding carries 'matched-at' (the exact leaking URL), the full 'response' body (so leaked credentials or the flag are directly readable), and a ready-to-run 'curl-command'. Rate limited to 3 req/s with a 5 second per-request timeout. Run this first, read the response bodies, and only write a custom enumerator if it returns nothing.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.web-recon</code> · 需手动导入 · v2.9.1 · 1 个工具</summary>
+<div class="kv"><b>包名称：</b>Web Recon</div>
+<div class="kv"><b>体积：</b>4.2 MB</div>
+<div class="kv">· <code>web-recon.http-baseline</code> —— http-baseline<br>Single-request HTTP fingerprint: status code, key security headers, page title and length. Never brute-forces; iterate at <=3 requests/sec.</div>
+</details>
+
+<details class="faq">
+<summary><code>ctfagent.windows-base</code> · 随版本内置 · v1.2.0 · 7 个工具</summary>
+<div class="kv"><b>包名称：</b>CTFAgentPi Windows Base Tools</div>
+<div class="kv"><b>体积：</b>3.5 MB</div>
+<div class="kv">· <code>ctf.crypto.math</code> —— Windows crypto math helper<br>BigInteger conversion, modular arithmetic, XOR, and RSA equal-offset relation recovery.</div>
+<div class="kv">· <code>ctf.forensics.file</code> —— Windows file forensics helper<br>Hash, magic bytes, entropy, and printable-string extraction for local evidence files.</div>
+<div class="kv">· <code>ctf.misc.codec</code> —— Windows encoding helper<br>Base64, hexadecimal, URL, and JSON conversion helpers.</div>
+<div class="kv">· <code>ctf.pwn.windows</code> —— Windows Pwn helper<br>TCP interaction and basic PE mitigation inspection for authorized CTF services and binaries.</div>
+<div class="kv">· <code>ctf.remote.access</code> —— Windows and Linux remote access helper<br>Allowlisted TCP probing, Linux SSH/SCP, and Windows WinRM/SMB access for explicitly authorized CTF targets.</div>
+<div class="kv">· <code>ctf.reverse.pe</code> —— Windows PE inspection helper<br>Inspect PE headers and sections or extract ASCII and UTF-16LE strings.</div>
+<div class="kv">· <code>ctf.web.http</code> —— Windows HTTP helper<br>GET, custom HTTP requests, and bounded downloads for an explicitly authorized CTF target.</div>
+</details>
+
+      <!-- TOOL_CATALOG_END -->
+
+      <h2 id="two-kinds" class="anchor">工具包怎么交付（重要）</h2>
+
+      <p>搞清「哪些随版本内置、哪些要手动导入」，可以避免「明明有包却用不上」和「重复导入」两种常见困惑。</p>
+
+      <details class="faq" open>
+        <summary>一、随版本内置 —— 开箱即用，不需要你导入</summary>
+        <div class="kv"><b>位置：</b>发行包解压目录下的 <code>ToolPacks\</code>。</div>
+        <div class="kv"><b>行为：</b>首次启动应用时，daemon 会自动安装并启用其中的包（<code>ensureBundledToolPacks</code>），无需任何手动操作。</div>
+        <div class="kv"><b>当前内置内容：</b>只有一个「工具包目录」元包 <code>ctfagent.ctf-full</code>。它不含实际工具，只提供一个 <code>list-packs</code> 工具，用来告诉解题 Agent 当前有哪些工具包可用。它不依赖任何其它包，因此不会因为缺依赖装不上。</div>
+        <div class="kv"><b>注意：</b>内置包不需要、也不应该再手动导入一遍。</div>
+      </details>
+
+      <details class="faq" open>
+        <summary>二、手动导入的工具包 —— 按需挑选，体积可控</summary>
+        <div class="kv"><b>在哪：</b>发行包之外单独提供（例如仓库的 <code>bin\工具包\</code> 目录），文件名不带版本号：<code>ctfagent.&lt;包名&gt;.ctfpack</code>。</div>
+        <div class="kv"><b>怎么导入：</b>打开「工具包」页面，点「导入 .ctfpack」，在文件选择框里按住 <b>Ctrl 多选</b>一次导入多个；单个体积很大的包（如 Ghidra 全套）建议用「从路径导入」，由 daemon 直接读盘更稳。</div>
+        <div class="kv"><b>版本规则：</b>同一个包名只保留最新版本，替换后文件名不变，重复导入不会累积旧版本。</div>
+        <div class="kv"><b>导入后：</b>建议点「全部启用」一次性打开包与其全部工具；已运行的任务不会热加载新包，需要新建任务。</div>
+      </details>
+
+      <!-- ============ 4.6 适用范围与兼容性 ============ -->
+      <h2 id="scope" class="anchor">适用范围与兼容性（重要）</h2>
+
+      <p>本节说明每个工具包在什么环境下可以直接用、什么情况下需要额外条件。选包前请先对照。</p>
+
+      <details class="faq" open>
+        <summary>通用前提（所有工具包）</summary>
+        <div class="kv"><b>操作系统：</b>Windows x64。Linux / macOS 版本不随本包发布。</div>
+        <div class="kv"><b>运行时：</b>随应用分发的便携 Python 3.12（<code>data/tools/windows/python</code>）。沙箱 PATH 内可直接调用 <code>python</code>。</div>
+        <div class="kv"><b>应用版本：</b>BTF 2.9.x。工具包清单格式为 <code>schemaVersion: 1</code>，跨 2.9.x 小版本通用。</div>
+        <div class="kv"><b>工作目录：</b>任务工作区，写入权限限于 <code>artifacts/**</code>；读取限于 <code>attachments/**</code> 与 <code>artifacts/**</code>。</div>
+        <div class="kv"><b>无外网时：</b>除标注「网络」的工具外均可离线工作。</div>
+      </details>
+
+      <details class="faq">
+        <summary>ctfagent.remote-vnc —— 需要目标开放 RFB/VNC 端口</summary>
+        <div class="kv"><b>适用：</b>RFB 3.x（3.3 / 3.7 / 3.8），安全类型 None(1) 与 VNC Authentication(2)，编码 Raw(0)。</div>
+        <div class="kv"><b>不适用：</b>VeNCrypt(16/19)、TLS(18)、Apple/RA2(30/33) 等加密握手；需要双向 TLS 或证书的部署。</div>
+        <div class="kv"><b>注意：</b>VNC 口令在协议层最多使用前 8 字节；口令正确仍失败时优先怀疑位序处理，而不是密码错误。</div>
+      </details>
+
+      <details class="faq">
+        <summary>ctfagent.qr —— 内置 zxing-cpp，无外部依赖</summary>
+        <div class="kv"><b>适用：</b>QR Code 及 zxing 支持的一维/二维条码；PNG/JPEG 等常见位图。</div>
+        <div class="kv"><b>实测能力：</b>反色、90°/180°/270° 旋转、高斯模糊 r≤2 均可解；<b>短边低于约 50 像素会失败</b>，此时应放大裁剪图而不是换工具。</div>
+        <div class="kv"><b>不适用：</b>MaxiCode 等特殊符号（需 Java zxing）；严重透视畸变的照片建议先做透视校正。</div>
+      </details>
+
+      <details class="faq">
+        <summary>ctfagent.media-ocr —— 内置 tesseract 与 chi_sim/eng 模型</summary>
+        <div class="kv"><b>版本：</b>2.9.1.1 起改为 Python 入口（<code>scripts/ocr.py</code>）。2.9.1 及更早的 PowerShell 入口在 AppContainer 内存在路径解析问题，请升级。</div>
+        <div class="kv"><b>适用：</b>截图、扫描件、验证码类图片的中英文识别；支持相对与绝对路径。</div>
+        <div class="kv"><b>不适用：</b>手写体、严重倾斜、极低分辨率小字；此时先 <code>screen-triage crop</code> 放大 3~5 倍再识别。</div>
+      </details>
+
+      <details class="faq">
+        <summary>ctfagent.net-probe / ctfagent.totp / ctfagent.screen</summary>
+        <div class="kv"><b>net-probe：</b>仅做单次握手与单次 TCP 连接判断，不做字典爆破、不做端口段扫描；单目标请控制在低速率。</div>
+        <div class="kv"><b>totp：</b>纯本地计算，不发起网络请求；需要 Base32 种子。种子每个实例独立，不要复用上一台。</div>
+        <div class="kv"><b>screen：</b>纯本地图像处理；依赖 Pillow，无需网络。</div>
+      </details>
+
+      <details class="faq">
+        <summary>版本号规则（2.9.1 起生效）</summary>
+        <div class="kv"><b>格式：</b><code>&lt;基线&gt;.&lt;日递增&gt;.&lt;当日构建号&gt;</code></div>
+        <div class="kv"><b>示例：</b>2026-11-01 第一次打包 <code>2.9.1.1</code>；同日再打包 <code>2.9.1.2</code>；次日第一次打包 <code>2.9.2.1</code>。</div>
+        <div class="kv"><b>发行包命名：</b><code>CTF-BTFly-&lt;版本号&gt;-win64.zip</code>，<b>不再包含日期或「优化版」字样</b>。</div>
+      </details>
+
+      <!-- ============ 5. FAQ ============ -->
+      <h2 id="faq" class="anchor">常见问题 FAQ</h2>
+
+      <details class="faq">
+        <summary>导入时提示“未受信任”/“未签名”，能用吗？</summary>
+        <div class="answer">
+          <p>能。这些包是本地构建、没有商店签名，所以会走一次「确认安装未受信任 Tool Pack」的提示。确认后正常使用。</p>
+          <p>如果你是从别人那里拿到来源不明的 <code>.ctfpack</code>，不要安装——包内程序会在沙箱内以你的身份执行。</p>
+        </div>
+      </details>
+
+      <details class="faq">
+        <summary>点击导入后一直转圈 / 进度不动，怎么办？</summary>
+        <div class="answer">
+          <p>大包（尤其是逆向增强包）走浏览器上传容易卡。先改用「从本地路径导入」。</p>
+          <p>如果路径方式也卡住，多半是后台还挂着一个已结束任务的残留会话，占着工具包锁。解决方法：<b>完全退出 BTFly 再启动</b>，然后重试导入。</p>
+          <p><span class="tag">2.9.1 已改进</span> 新版本会定期自动回收这类残留，但仍建议大包用路径导入。</p>
+        </div>
+      </details>
+
+      <details class="faq">
+        <summary>导入成功，但 AI 说“没有 list-packs / elf-summary 这个工具”</summary>
+        <div class="answer">
+          <p>工具包现在统一走 MCP。按顺序检查四步：</p>
+          <ol>
+            <li><b>是否是旧任务？</b> MCP 绑定在创建任务时冻结，导入新包后必须<b>新建一道题</b>。</li>
+            <li><b>设置 → MCP 页</b>里有没有 <code>toolpacks</code>（Tool Pack Bridge）且已启用。没有说明 daemon 没注册成功，可看 <code>data\daemon.log</code> 里有没有 <code>tool pack MCP bridge registered</code>。</li>
+            <li><b>版本行为</b>：2.9.3.4 及以前必须重启应用；2.9.3.5 及以后最多等 30 秒自动生效。</li>
+            <li>若以上都对，看任务日志里的工具列表——只在 <code>tools/call</code> 失败时才可能是包本身损坏。</li>
+          </ol>
+        </div>
+      </details>
+
+      <details class="faq">
+        <summary>工具能被调用，但一直返回“文件不存在 / FileNotFoundError”</summary>
+        <div class="answer">
+          <p>这是 2.9.3.6 之前版本的已知缺陷：MCP 工具的工作目录没有指向任务 workspace，相对路径（如 <code>artifacts/a.png</code>）全部找不到。</p>
+          <p><b>2.9.3.6 及以后已修复</b>。升级后相对路径与绝对路径都能用。若仍遇到，检查路径是否写成了工作区之外的位置。</p>
+        </div>
+      </details>
+
+      <details class="faq">
+        <summary>Ghidra（600 MB 以上）怎么导入？为什么点“导入”没反应？</summary>
+        <div class="answer">
+          <p>大包必须用<b>「从路径导入」</b>：把 <code>ctfagent.re-ghidra.ctfpack</code> 放到本机任意目录，复制完整路径（如 <code>D:\Downloads\ctfagent.re-ghidra.ctfpack</code>）粘进输入框再点导入。</p>
+          <p>原因：为防止界面卡死，浏览器上传通道限制了 200 MB；超过上限会被拦下并提示改用路径导入。daemon 直接读盘不受此限制。</p>
+          <p><b>依赖提示</b>：<code>ctfagent.re-ghidra</code> 本身无依赖，可单独使用；但 <code>ctfagent.ctf-full-re</code>（逆向全家桶）依赖 16 个包（含 re-ghidra），单独导入它会提示依赖缺失。</p>
+        </div>
+      </details>
+
+      <details class="faq">
+        <summary>工具都在，但 AI 宁愿自己写 bash 也不用 packs__ 工具</summary>
+        <div class="answer">
+          <p>这是模型的<b>工具选择偏好</b>，不是链路故障。可以这样引导：</p>
+          <ol>
+            <li>在题目描述里明确写「优先使用 <code>packs__</code> 开头的工具，不要用 bash 拼命令行」；</li>
+            <li>把具体场景写死，例如「看图/识图必须调用 <code>packs__ctfagent_media_ocr_ocr</code>」；</li>
+            <li>如果仍然绕过，说明该包的 <code>description</code> 不够清楚，可以在包定义里补一句适用场景。</li>
+          </ol>
+        </div>
+      </details>
+
+      <details class="faq">
+        <summary>为什么工具名都带 <code>packs__</code> 前缀，很长很难记？</summary>
+        <div class="answer">
+          <p>前缀用于区分「哪个工具包提供的同名工具」，避免冲突。你不需要记：在题目描述里说清楚目标，AI 会从工具列表里自己挑。</p>
+        </div>
+      </details>
+
+      <details class="faq">
+        <summary>“完全离线”模式下，题都没开始就报模型请求失败</summary>
+        <div class="answer">
+          <p>这是预期的：完全离线会阻断一切外网访问，而 AI 的模型请求也要走网络，所以模型用不了。</p>
+          <p>需要 AI 参与的题目请选默认的「公网与局域网」；只有纯本地分析、不需要模型时才用离线。</p>
+        </div>
+      </details>
+
+      <details class="faq">
+        <summary>提示“沙箱不可用 / required capability ACE is missing”</summary>
+        <div class="answer">
+          <p>这是 Windows 沙箱目录权限被重置导致的。解决顺序：</p>
+          <ol>
+            <li>设置里点一次「重试准备」（或重启应用，让它在启动时重新准备）。</li>
+            <li>仍失败再看磁盘权限是否被安全软件改过。</li>
+          </ol>
+          <p>不要为了绕过它去选「仅本次改用宿主执行」——那会失去沙箱隔离。</p>
+        </div>
+      </details>
+
+      <details class="faq">
+        <summary>逆向增强包很大，每次开题都变慢，能只装基础包吗？</summary>
+        <div class="answer">
+          <p>可以。基础包已覆盖大部分场景；只有需要 Ghidra 伪代码时才用增强包。系统会按题目类型自动选择——非逆向题不会加载增强包。</p>
+        </div>
+      </details>
+
+      <details class="faq">
+        <summary>AI 明明找到了 flag，但显示“未验证”</summary>
+        <div class="answer">
+          <p>“已验证”表示 AI 用程序真的验证过（例如解密后目标串匹配、校验函数返回 True）。如果它只是从文件里读到一个像 flag 的字符串，就会标为未验证。</p>
+          <p>你可以人工确认后手动通过。若确认无误却一直显示未验证，检查 <code>artifacts/final-result.json</code> 是否写成了标准结构：</p>
+          <pre><code>{"status":"solved","flags":[{"value":"flag{...}","verified":true,"evidence":"如何验证的"}]}</code></pre>
+        </div>
+      </details>
+
+      <details class="faq">
+        <summary>工具包占多少磁盘？能卸载吗？</summary>
+        <div class="answer">
+          <p>基础包约 100 MB，逆向增强包约 1 GB（含 Ghidra 与 JDK）。可以在工具包页面「卸载」，被运行中任务引用的版本会拒绝卸载，等任务结束再删。</p>
+        </div>
+      </details>
+
+      <details class="faq">
+        <summary>升级到 2.9.1 后，旧版本工具包还能用吗？</summary>
+        <div class="answer">
+          <p>工具包版本跟随主程序，2.9.1 的包请配套使用。旧版本可以保留（同 ID 多版本共存），但建议停用旧版避免混淆。</p>
+        </div>
+      </details>
+
+      <!-- ============ 6. 排障 ============ -->
+      <h2 id="trouble" class="anchor">故障排查速查表</h2>
+
+      <table>
+        <thead><tr><th>现象</th><th>最可能的原因</th><th>怎么办</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>导入按钮无反应 / 选完文件没变化</td>
+            <td>文件扩展名不是 <code>.ctfpack</code></td>
+            <td>确认文件名结尾；压缩包需要先解压出 <code>.ctfpack</code></td>
+          </tr>
+          <tr>
+            <td>导入报 “already installed with a different digest”</td>
+            <td>同版本号但内容不同（你重新打包过）</td>
+            <td>把包版本号加 1 再导入，或先卸载旧版本</td>
+          </tr>
+          <tr>
+            <td>导入 HTTP 超时 / 一直等待</td>
+            <td>残留任务会话占着工具包锁</td>
+            <td>完全退出应用重启后重试；大包改用路径导入</td>
+          </tr>
+          <tr>
+            <td>任务里工具列表没有 <code>packs__</code></td>
+            <td>旧任务（MCP 绑定已冻结）／ daemon 未注册 MCP 桥</td>
+            <td>先<b>新建任务</b>；再看「设置 → MCP」是否有 <code>toolpacks</code>；最后查 <code>data\daemon.log</code></td>
+          </tr>
+          <tr>
+            <td>刚导入的包，AI 看不到</td>
+            <td>2.9.3.4 及以前需重启；2.9.3.5+ 有 30 秒缓存</td>
+            <td>等 30 秒并<b>新建任务</b>；老版本需完全退出重启</td>
+          </tr>
+          <tr>
+            <td>MCP 工具报 <code>FileNotFoundError</code></td>
+            <td>2.9.3.6 之前工具工作目录没指向 workspace</td>
+            <td>升级到 2.9.3.6+；临时可让 AI 改用绝对路径</td>
+          </tr>
+          <tr>
+            <td>工具都在但 AI 只用 bash</td>
+            <td>模型工具选择偏好</td>
+            <td>在题目描述里写「优先使用 <code>packs__</code> 工具」并点名具体工具</td>
+          </tr>
+          <tr>
+            <td>“沙箱不可用 / ACE is missing”</td>
+            <td>沙箱目录权限被重置</td>
+            <td>点「重试准备」或重启应用</td>
+          </tr>
+          <tr>
+            <td>“完全离线”下模型请求失败</td>
+            <td>离线阻断网络，模型也用不了</td>
+            <td>改用「公网与局域网」</td>
+          </tr>
+          <tr>
+            <td>Ghidra 反编译很久没结果</td>
+            <td>大文件首次分析耗时</td>
+            <td>耐心等；或把 <code>maxFunctions</code> 调小、只做局部函数</td>
+          </tr>
+          <tr>
+            <td>nuclei 扫描把靶机打挂</td>
+            <td>速率过高</td>
+            <td>把 <code>rateLimit</code> 降到 1–2，超时保持 5 秒</td>
+          </tr>
+          <tr>
+            <td>OCR 识别不出中文</td>
+            <td>语言包或图片质量</td>
+            <td>确认 <code>language</code> 为 <code>eng+chi_sim</code>，图片尽量清晰</td>
+          </tr>
+          <tr>
+            <td>OCR 个别字符识别错（如 <code>P)K</code> 被读成 <code>PQJK</code>）</td>
+            <td>图像分辨率与二值化影响，OCR 不是逐字节可靠</td>
+            <td>让 AI 对同一图跑多种预处理（3x/6x/二值化）取多数一致结果，不要拿单次 OCR 结果直接当密码</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- ============ 7. 版本 ============ -->
+      <h2 id="version" class="anchor">版本与更新</h2>
+      <ul>
+        <li>本文档由打包流程按实际产物自动生成工具清单，<b>以页首「本发行版适用的工具包清单」为准</b>。</li>
+        <li>工具包文件名<b>不带版本号</b>：统一为 <code>ctfagent.&lt;包名&gt;.ctfpack</code>；版本只存在于包内 <code>manifest.json</code>。</li>
+        <li>同一个包名只保留最新版本；被取代的旧版本会被自动归档，不会在目录里累积。</li>
+        <li>更新方式：直接用新文件覆盖导入即可（同名替换），无需先卸载。</li>
+        <li>回滚方式：导入上一版本的归档文件；已运行任务仍使用其各自冻结的版本。</li>
+      </ul>
+
+      <div class="callout tip">
+        <div class="ico">✓</div>
+        <div class="body">
+          <strong>一句话总结</strong>
+          导入一次 → 建题不用选包 → 让 AI 自己用工具 → 出问题先看本文「故障排查速查表」。
+        </div>
+      </div>
+
+      <div class="footer">
+        CTF-BTFly 工具包使用说明 · 文档版本 2.9.5 · 工具清单由发行打包流程按实际产物自动生成
+      </div>
+    </div>
+  </main>
+</div>
+
+  <footer class="site-footer"><div class="container footer-inner"><a class="brand" href="index.html"><img src="assets/cpi-icon.png" alt="" width="32" height="32" /><span><strong>CTF-BTFly</strong><small>Authorized security research only</small></span></a><p>© 2026 CTF-BTFly · v2.9.5 · 工具包清单与版本号以发行包内文档为准。</p></div></footer>
+
+<script>
+  // 侧边栏目录高亮：滚动时把当前段落对应的链接标为 active
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc a'));
+    var targets = links.map(function (link) {
+      var id = link.getAttribute('href').slice(1);
+      return document.getElementById(id);
+    }).filter(Boolean);
+
+    function update() {
+      var offset = 120;
+      var current = targets[0];
+      for (var i = 0; i < targets.length; i++) {
+        if (targets[i].getBoundingClientRect().top <= offset) {
+          current = targets[i];
+        }
+      }
+      links.forEach(function (link) {
+        link.classList.toggle('active', current && link.getAttribute('href') === '#' + current.id);
+      });
+    }
+
+    var ticking = false;
+    window.addEventListener('scroll', function () {
+      if (ticking) return;
+      ticking = true;
+      window.requestAnimationFrame(function () {
+        update();
+        ticking = false;
+      });
+    }, { passive: true });
+
+    // 点击目录平滑滚动（CSS 已开启 scroll-behavior，这里只处理地址栏锚点）
+    links.forEach(function (link) {
+      link.addEventListener('click', function (event) {
+        var id = link.getAttribute('href').slice(1);
+        var target = document.getElementById(id);
+        if (!target) return;
+        event.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        history.replaceState(null, '', '#' + id);
+      });
+    });
+
+    // 窄屏默认收起目录，避免正文被目录挤出首屏
+    var tocWrap = document.querySelector('.toc-wrap');
+    if (tocWrap && window.matchMedia('(max-width: 900px)').matches) {
+      tocWrap.open = false;
+    }
+
+    update();
+  })();
+</script>
+<script src="app.js"></script>
+</body>
+</html>
